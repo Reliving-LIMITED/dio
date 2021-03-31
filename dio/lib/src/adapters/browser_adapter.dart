@@ -5,6 +5,7 @@ import '../options.dart';
 import '../adapter.dart';
 import 'dart:html';
 import '../headers.dart';
+import 'package:buffer/buffer.dart';
 
 HttpClientAdapter createAdapter() => BrowserHttpClientAdapter();
 
@@ -91,9 +92,7 @@ class BrowserHttpClientAdapter implements HttpClientAdapter {
     });
 
     if (requestStream != null) {
-      requestStream
-          .reduce((a, b) => Uint8List.fromList([...a, ...b]))
-          .then(xhr.send);
+      readFully(requestStream).then(xhr.send);
     } else {
       xhr.send();
     }
@@ -101,6 +100,14 @@ class BrowserHttpClientAdapter implements HttpClientAdapter {
     return completer.future.whenComplete(() {
       _xhrs.remove(xhr);
     });
+  }
+
+  Future<Uint8List> readFully(Stream<List<int>> stream) async {
+    var buffer = BytesBuffer();
+    await for (var b in stream) {
+      buffer.add(b);
+    }
+    return buffer.toBytes();
   }
 
   /// Closes the client.
